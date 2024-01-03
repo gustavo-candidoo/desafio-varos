@@ -29,23 +29,38 @@ app = dash.Dash(__name__)
 
 # Layout do dashboard
 app.layout = html.Div([
-    html.H1("Dashboard de Dados Históricos de Ações"),
-
-    dcc.Dropdown(
-        id='dropdown-acao',
-        options=[{'label': acao, 'value': acao} for acao in acoes],
-        value='WEGE3.SA',
-        multi=False
-    ),
-
-    dcc.Graph(
-        id='graph-dados-historicos'
-    ),
-
-    html.Div(id='news-content')
+    dcc.Location(id='url', refresh=False),
+    html.Div(id='page-content', className='container-fluid', style={'backgroundColor': 'black'})  # Adiciona estilo de fundo preto
 ])
 
-# ...
+# Página inicial
+index_page = html.Div([
+    dcc.Markdown('''
+    # Dashboard de Dados Históricos de Ações
+    '''),
+    html.Div([
+        # Layout da esquerda (gráfico e dropdown)
+        html.Div([
+            dcc.Dropdown(
+                id='dropdown-acao',
+                options=[{'label': acao, 'value': acao} for acao in acoes],
+                value='WEGE3.SA',
+                multi=False,
+                className="mb-3"
+            ),
+            dcc.Graph(
+                id='graph-dados-historicos',
+                style={'width': '100%', 'height': '70vh'}  # Ajusta a largura e altura do gráfico
+            ),
+        ], className="col-md-6"),
+
+        # Layout da direita (notícias)
+        html.Div([
+            html.H2("Notícias", className="mb-3", style={'color': 'white', 'font-weight': 'bold'}),  # Ajusta o estilo do título
+            html.Div(id='news-content')
+        ], className="col-md-6"),
+    ], className="row"),
+])
 
 # Callback para atualizar o gráfico e obter notícias com base na seleção do usuário
 @app.callback(
@@ -94,9 +109,21 @@ def update_graph_and_news(selected_acao):
         news_descriptions.append(description)
 
     # Retornar o gráfico de velas e o conteúdo das notícias
-    return fig, [html.Div([html.H3(title), html.P(description)]) for title, description in zip(news_titles, news_descriptions)]
+    return fig, [html.Div([
+        html.H3(html.A(title, href=link, target='_blank')),  # Adiciona o link no título
+        html.P(description),
+    ]) for title, description, link in zip(news_titles, news_descriptions, news_links)]
 
 # ...
+
+# Atualização do layout baseado na URL
+@app.callback(dash.dependencies.Output('page-content', 'children'),
+              [dash.dependencies.Input('url', 'pathname')])
+def display_page(pathname):
+    if pathname == '/':
+        return index_page
+    else:
+        return '404'
 
 if __name__ == '__main__':
     app.run_server(debug=True)
