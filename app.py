@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 import requests
 import datetime as dt
 import dash_bootstrap_components as dbc
+import sqlite3
 
 acoes = ['WEGE3.SA', 'PETR4.SA', 'CEAB3.SA']
 
@@ -29,6 +30,13 @@ def download_stock_data(ticker, start, end):
         return None
 
 dados_acoes = {acao: download_stock_data(acao, inicio, fim) for acao in acoes}
+
+conn = sqlite3.connect('dados_acoes.db')
+
+for acao, dados in dados_acoes.items():
+    dados.to_sql(acao, conn, if_exists='replace')
+
+conn.close()
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
