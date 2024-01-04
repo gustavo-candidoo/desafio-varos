@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 from bs4 import BeautifulSoup
 import requests
 import datetime as dt
+import dash_bootstrap_components as dbc
 
 acoes = ['WEGE3.SA', 'PETR4.SA', 'CEAB3.SA']
 
@@ -19,39 +20,51 @@ ticker_mapping = {
 inicio = '2023-01-01'
 fim = dt.datetime.now()
 
-dados_acoes = {acao: yf.download(acao, start=inicio, end=fim) for acao in acoes}
+def download_stock_data(ticker, start, end):
+    try:
+        data = yf.download(ticker, start=start, end=end)
+        return data
+    except Exception as e:
+        print(f"Erro ao baixar dados para {ticker}: {e}")
+        return None
 
-app = dash.Dash(__name__)
+dados_acoes = {acao: download_stock_data(acao, inicio, fim) for acao in acoes}
+
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
-    html.Div(id='page-content', className='container-fluid', style={'backgroundColor': 'black'}) 
-])
+    dbc.Container([
+        dbc.Row([
+            dbc.Col([
+                dcc.Markdown('''
+                # Dashboard de Dados Históricos de Ações
+                '''),
+                dcc.Dropdown(
+                    id='dropdown-acao',
+                    options=[{'label': acao, 'value': acao} for acao in acoes],
+                    value='WEGE3.SA',
+                    multi=False,
+                    className="mb-3"
+                ),
+                dcc.Graph(
+                    id='graph-dados-historicos',
+                    style={'width': '100%', 'height': '70vh', 'margin-bottom': '20px'}
+                ),
+            ], width=6),
 
-index_page = html.Div([
-    dcc.Markdown('''
-    # Dashboard de Dados Históricos de Ações
-    '''),
-    html.Div([
-        html.Div([
-            dcc.Dropdown(
-                id='dropdown-acao',
-                options=[{'label': acao, 'value': acao} for acao in acoes],
-                value='WEGE3.SA',
-                multi=False,
-                className="mb-3"
-            ),
-            dcc.Graph(
-                id='graph-dados-historicos',
-                style={'width': '100%', 'height': '70vh'} 
-            ),
-        ], className="col-md-6"),
+            dbc.Col([
+                html.H2("Notícias", className="mb-3", style={'font-weight': 'bold', 'color': 'black'}),
+                html.Div(id='news-content', style={'text-align': 'right'})
+            ], width=6),
+        ]),
 
-        html.Div([
-            html.H2("Notícias", className="mb-3", style={'color': 'white', 'font-weight': 'bold'}), 
-            html.Div(id='news-content')
-        ], className="col-md-6"),
-    ], className="row"),
+        dbc.Row([
+            dbc.Col([
+                html.Div(style={'height': '100px'}),
+            ]),
+        ]),
+    ], className='mt-3'),
 ])
 
 @app.callback(
@@ -95,8 +108,8 @@ def update_graph_and_news(selected_acao):
         news_descriptions.append(description)
 
     return fig, [html.Div([
-        html.H3(html.A(title, href=link, target='_blank')),  
-        html.P(description),
+        html.H3(html.A(title, href=link, target='_blank', style={'color': 'black'})),
+        html.P(description, style={'color': 'black'}),
     ]) for title, description, link in zip(news_titles, news_descriptions, news_links)]
 
 @app.callback(dash.dependencies.Output('page-content', 'children'),
